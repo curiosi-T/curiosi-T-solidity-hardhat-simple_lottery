@@ -10,7 +10,6 @@ Other commands:
 ```shell
 npx hardhat compile
 npx hardhat test
-npx hardhat run scripts/sample-script.js
 npx hardhat node (to start hardhat local network)
 npx hardhat run .\scripts\sample-script.js --network localhost
 npx hardhat help

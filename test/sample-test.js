@@ -1,19 +1,55 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, waffle } = require("hardhat");
 
-describe("Greeter", function () {
-  it("Should return the new greeting once it's changed", async function () {
-    const Greeter = await ethers.getContractFactory("Greeter");
-    const greeter = await Greeter.deploy("Hello, world!");
-    await greeter.deployed();
+let Lottery;
+let lottery;
+let owner;
+let addr1;
+let addr2;
+let addrs;
+let provider;
 
-    expect(await greeter.greet()).to.equal("Hello, world!");
+beforeEach(async function () {
+  Lottery = await ethers.getContractFactory("Lottery");
+  [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
-    const setGreetingTx = await greeter.setGreeting("Hola, mundo!");
+  lottery = await Lottery.deploy();
+  await lottery.deployed();
 
-    // wait until the transaction is mined
-    await setGreetingTx.wait();
+  provider = waffle.provider;
+});
 
-    expect(await greeter.greet()).to.equal("Hola, mundo!");
+describe("Deployment", function () {
+  it("Should set the right manager", async function () {
+    expect(await lottery.manager()).to.equal(owner.address);
+  });
+});
+
+describe("Transactions", function () {
+  it("Should return 0x00 for recent winner at beginning", async function () {
+    expect(await lottery.recentWinner()).to.equal("0x0000000000000000000000000000000000000000");
+  });
+
+  it("should throw exception when player sends less than 0.1 ETH", async function () {
+    await expect(lottery.connect(addr1).playLottery()).to.be.revertedWith("not enough ETH!");
+  });
+
+  it("should succeed when player sends more than 0.1 ETH", async function () {
+    await lottery.connect(addr1).playLottery({ value: ethers.utils.parseEther("1.0") });
+
+    var contractBalance = await provider.getBalance(lottery.address);
+    console.log(`--> ${contractBalance}`);
+
+    expect(contractBalance).to.equal(ethers.utils.parseEther("1.0"));
+    expect(await lottery.players(0)).to.equal(addr1.address);
+  });
+
+  it("should pick a winner when more then 3 players", async function () {
+    await lottery.connect(addr1).playLottery({ value: ethers.utils.parseEther("0.1") });
+    await lottery.connect(addr1).playLottery({ value: ethers.utils.parseEther("0.1") });
+    await lottery.connect(addr1).playLottery({ value: ethers.utils.parseEther("0.1") });
+
+    await lottery.pickWinner();
+    expect(await lottery.recentWinner()).to.equal(addr1.address);
   });
 });
