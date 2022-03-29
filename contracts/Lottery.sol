@@ -21,7 +21,8 @@ contract Lottery {
 
     function pickWinner() public payable {
         require(players.length >= 3, "not enough players yet!");
-
+        require(msg.sender == manager);
+        
         // pick winner
         uint winnerNr = random() % players.length;
         recentWinner = payable(players[winnerNr]);
